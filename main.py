@@ -1,21 +1,7 @@
-from collections import deque
+import heapq
 
-class Node:
-    x: int
-    y: int
-    
-    def __init__(self, x: int = 0, y: int = 0):
-        self.x = x
-        self.y = y
-
-    def __eq__(self, other):
-        return self.x == other.x and self.y == other.y
-
-    def __hash__(self):
-        return hash((self.x, self.y))
-
-    def __repr__(self):
-        return f"Node({self.x}, {self.y})"
+from node import Node
+from costs import manhatten
 
 def get_neighbors(node: Node, obstacles: set[Node] = set()) -> list[Node]:
     candidates = [Node(node.x + 1, node.y), Node(node.x - 1, node.y),
@@ -25,8 +11,11 @@ def get_neighbors(node: Node, obstacles: set[Node] = set()) -> list[Node]:
 def heuristic(node: Node) -> float:
     return 0
 
-def cost_function(node: Node, alpha: float) -> float:
-    return 1
+def cost_function(start: Node, node: Node, alpha: float = 0.0) -> float:
+    return manhatten(start, node)
+
+def total_cost(start:Node, node: Node, alpha: float) -> float:
+    return cost_function(start, node) + heuristic(node)
 
 def draw_grid(start: Node, goal: Node, path: list[Node], explored: set[Node], obstacles: set[Node], padding: int = 5) -> str:
     # Find the boundaries of the grid based on start, goal, and path
@@ -64,22 +53,22 @@ def draw_grid(start: Node, goal: Node, path: list[Node], explored: set[Node], ob
     return grid_str
 
 def a_star_search(start: Node, goal: Node, obstacles: set[Node], alpha: float) -> None | tuple[dict[Node, Node], set[Node]]:
-    frontier: deque = deque()
+    frontier: list[tuple[float, Node]] = []
     explored: set[Node] = set()
-    frontier.append(start)
+    heapq.heappush(frontier, (0.0, start))
     explored.add(start)
 
     came_from: dict[Node, Node] = {}
 
     while len(frontier) > 0:
-        current = frontier.popleft()
+        cost, current = heapq.heappop(frontier)
         for neighbor in get_neighbors(current, obstacles):
             if neighbor == goal:
                 came_from[neighbor] = current
                 return came_from, explored
             if neighbor not in explored:
                 explored.add(neighbor)
-                frontier.append(neighbor)
+                heapq.heappush(frontier, (total_cost(start, neighbor, alpha), neighbor)) 
                 came_from[neighbor] = current
     return None
 
