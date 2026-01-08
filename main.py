@@ -12,11 +12,11 @@ def traverse(
     start: Node,
     goal: Node,
     obstacles: set[Node],
-    cost_metric: Callable[[Node, Node], float] = euclidean,
-    heuristic_metric: Callable[[Node, Node], float] = euclidean,
+    metric: Callable[[Node, Node], float] = euclidean,
 ) -> None:
     while start != goal:
-        result = a_star_search(start, goal, obstacles, cost_metric, heuristic_metric)
+        planner = AStarPlanner(start, goal, obstacles, metric)
+        result = planner.execute()
         if result is None:
             return
         came_from, explored = result
@@ -34,8 +34,7 @@ def main():
     parser.add_argument("end_x", type=int, help="X coordinate of the end node")
     parser.add_argument("end_y", type=int, help="Y coordinate of the end node")
     parser.add_argument("-o", "--obstacles_file", type=str, default=None, help="Path to obstacles file")
-    parser.add_argument("-C", "--cost_metric", type=str, choices=[m.value for m in Metric], default=Metric.EUCLIDEAN.value, help="Cost metric to use")
-    parser.add_argument("-H", "--heuristic_metric", type=str, choices=[m.value for m in Metric], default=Metric.EUCLIDEAN.value, help="Heuristic metric to use")
+    parser.add_argument("-m", "--metric", type=str, choices=[m.value for m in Metric], default=Metric.EUCLIDEAN.value, help="Cost metric to use")
 
     args = parser.parse_args()
 
@@ -46,9 +45,8 @@ def main():
 
     start = Node()
     goal = Node(args.end_x, args.end_y)
-    cost_metric = Metric(args.cost_metric).to_function()
-    heuristic_metric = Metric(args.heuristic_metric).to_function()
-    traverse(start, goal, obstacles, cost_metric, heuristic_metric)
+    metric = Metric(args.metric).to_function()
+    traverse(start, goal, obstacles, metric)
 
 if __name__ == "__main__":
     main()

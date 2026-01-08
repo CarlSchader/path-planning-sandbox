@@ -1,17 +1,5 @@
 from node import Node
 
-def get_neighbors(node: Node, obstacles: set[Node] = set()) -> list[Node]:
-    candidates = [
-        Node(node.x + 1, node.y),
-        Node(node.x + 1, node.y + 1),
-        Node(node.x, node.y + 1),
-        Node(node.x - 1, node.y + 1),
-        Node(node.x - 1, node.y),
-        Node(node.x - 1, node.y - 1),
-        Node(node.x, node.y - 1),
-        Node(node.x + 1, node.y - 1),
-    ]
-    return [c for c in candidates if c not in obstacles]
 
 def load_obstacles(file_path: str) -> set[Node]:
     obstacles: set[Node] = set()
