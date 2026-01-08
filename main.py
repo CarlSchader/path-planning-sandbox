@@ -6,8 +6,16 @@ from metrics import *
 from view import draw_grid
 
 def get_neighbors(node: Node, obstacles: set[Node] = set()) -> list[Node]:
-    candidates = [Node(node.x + 1, node.y), Node(node.x - 1, node.y),
-            Node(node.x, node.y + 1), Node(node.x, node.y - 1)]
+    candidates = [
+        Node(node.x + 1, node.y),
+        Node(node.x + 1, node.y + 1),
+        Node(node.x, node.y + 1),
+        Node(node.x - 1, node.y + 1),
+        Node(node.x - 1, node.y),
+        Node(node.x - 1, node.y - 1),
+        Node(node.x, node.y - 1),
+        Node(node.x + 1, node.y - 1),
+    ]
     return [c for c in candidates if c not in obstacles]
 
 def heuristic(start: Node, end: Node, metric: Callable[[Node, Node], float]) -> float:
@@ -75,8 +83,8 @@ def main():
     parser.add_argument("end_x", type=int, help="X coordinate of the end node")
     parser.add_argument("end_y", type=int, help="Y coordinate of the end node")
     parser.add_argument("-o", "--obstacles_file", type=str, default=None, help="Path to obstacles file")
-    parser.add_argument("-C", "--cost_metric", type=str, choices=[m.value for m in Metric], default=Metric.MANHATTEN.value, help="Cost metric to use")
-    parser.add_argument("-H", "--heuristic_metric", type=str, choices=[m.value for m in Metric], default=Metric.MANHATTEN.value, help="Heuristic metric to use")
+    parser.add_argument("-C", "--cost_metric", type=str, choices=[m.value for m in Metric], default=Metric.EUCLIDEAN.value, help="Cost metric to use")
+    parser.add_argument("-H", "--heuristic_metric", type=str, choices=[m.value for m in Metric], default=Metric.EUCLIDEAN.value, help="Heuristic metric to use")
 
     args = parser.parse_args()
 
