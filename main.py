@@ -1,58 +1,37 @@
 import heapq
+from typing import Callable
 
 from node import Node
-from costs import manhatten
+from metrics import *
+from view import draw_grid
 
 def get_neighbors(node: Node, obstacles: set[Node] = set()) -> list[Node]:
     candidates = [Node(node.x + 1, node.y), Node(node.x - 1, node.y),
             Node(node.x, node.y + 1), Node(node.x, node.y - 1)]
     return [c for c in candidates if c not in obstacles]
 
-def heuristic(node: Node) -> float:
-    return 0
+def heuristic(start: Node, end: Node, metric: Callable[[Node, Node], float]) -> float:
+    return metric(start, end)
 
-def cost_function(start: Node, node: Node, alpha: float = 0.0) -> float:
-    return manhatten(start, node)
+def cost_function(start: Node, end: Node, metric: Callable[[Node, Node], float]) -> float:
+    return metric(start, end)
 
-def total_cost(start:Node, node: Node, alpha: float) -> float:
-    return cost_function(start, node) + heuristic(node)
+def total_cost(
+    start: Node,
+    goal: Node,
+    current: Node,
+    cost_metric: Callable[[Node, Node], float] = manhatten,
+    heuristic_metric: Callable[[Node, Node], float] = manhatten,
+) -> float:
+    return cost_function(start, current, cost_metric) + heuristic(current, goal, heuristic_metric)
 
-def draw_grid(start: Node, goal: Node, path: list[Node], explored: set[Node], obstacles: set[Node], padding: int = 5) -> str:
-    # Find the boundaries of the grid based on start, goal, and path
-    all_points = [start, goal] + path
-    min_x = min(node.x for node in all_points)
-    max_x = max(node.x for node in all_points)
-    min_y = min(node.y for node in all_points)
-    max_y = max(node.y for node in all_points)
-    
-    # Add padding
-    min_x -= padding
-    max_x += padding
-    min_y -= padding
-    max_y += padding
-    
-    # Draw the grid
-    grid_str = ""
-    for y in range(max_y, min_y - 1, -1):
-        row = ""
-        for x in range(min_x, max_x + 1):
-            node = Node(x, y)
-            if node == start:
-                row += "S "
-            elif node == goal:
-                row += "G "
-            elif node in path:
-                row += "P "
-            elif node in obstacles:
-                row += "# "
-            elif node in explored:
-                row += "_ "
-            else:
-                row += "  "
-        grid_str += row + "\n"
-    return grid_str
-
-def a_star_search(start: Node, goal: Node, obstacles: set[Node], alpha: float) -> None | tuple[dict[Node, Node], set[Node]]:
+def a_star_search(
+    start: Node,
+    goal: Node,
+    obstacles: set[Node],
+    cost_metric: Callable[[Node, Node], float] = manhatten,
+    heuristic_metric: Callable[[Node, Node], float] = manhatten,
+) -> None | tuple[dict[Node, Node], set[Node]]:
     frontier: list[tuple[float, Node]] = []
     explored: set[Node] = set()
     heapq.heappush(frontier, (0.0, start))
@@ -68,7 +47,7 @@ def a_star_search(start: Node, goal: Node, obstacles: set[Node], alpha: float) -
                 return came_from, explored
             if neighbor not in explored:
                 explored.add(neighbor)
-                heapq.heappush(frontier, (total_cost(start, neighbor, alpha), neighbor)) 
+                heapq.heappush(frontier, (total_cost(start, goal, neighbor, cost_metric, heuristic_metric), neighbor)) 
                 came_from[neighbor] = current
     return None
 
@@ -95,8 +74,9 @@ def main():
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument("end_x", type=int, help="X coordinate of the end node")
     parser.add_argument("end_y", type=int, help="Y coordinate of the end node")
-    parser.add_argument("-a", "--alpha", type=float, default=1.0, help="Alpha parameter for cost function")
     parser.add_argument("-o", "--obstacles_file", type=str, default=None, help="Path to obstacles file")
+    parser.add_argument("-C", "--cost_metric", type=str, choices=[m.value for m in Metric], default=Metric.MANHATTEN.value, help="Cost metric to use")
+    parser.add_argument("-H", "--heuristic_metric", type=str, choices=[m.value for m in Metric], default=Metric.MANHATTEN.value, help="Heuristic metric to use")
 
     args = parser.parse_args()
 
@@ -107,7 +87,9 @@ def main():
 
     start = Node()
     goal = Node(args.end_x, args.end_y)
-    result = a_star_search(start, goal, obstacles, args.alpha)
+    cost_metric = Metric(args.cost_metric).to_function()
+    heuristic_metric = Metric(args.heuristic_metric).to_function()
+    result = a_star_search(start, goal, obstacles, cost_metric, heuristic_metric)
 
     if result is not None:
         came_from, explored = result
