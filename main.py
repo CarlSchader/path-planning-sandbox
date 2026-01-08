@@ -17,9 +17,10 @@ class Node:
     def __repr__(self):
         return f"Node({self.x}, {self.y})"
 
-def get_neighbors(node: Node) -> list[Node]:
-    return [Node(node.x + 1, node.y), Node(node.x - 1, node.y),
+def get_neighbors(node: Node, obstacles: set[Node]) -> list[Node]:
+    candidates = [Node(node.x + 1, node.y), Node(node.x - 1, node.y),
             Node(node.x, node.y + 1), Node(node.x, node.y - 1)]
+    return [c for c in candidates if c not in obstacles]
 
 def heuristic(node: Node) -> float:
     return 0
