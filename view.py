@@ -1,4 +1,5 @@
 from node import Node
+import os
 
 def draw_grid(
     start: Node,
@@ -41,3 +42,15 @@ def draw_grid(
                 row += "  "
         grid_str += row + "\n"
     return grid_str
+
+def render_grid(
+    start: Node,
+    goal: Node, 
+    path: list[Node],
+    explored: set[Node],
+    obstacles: set[Node],
+    padding: int = 5
+) -> None:
+    os.system('cls' if os.name == 'nt' else 'clear')
+    grid_str = draw_grid(start, goal, path, explored, obstacles, padding)
+    print(grid_str)
