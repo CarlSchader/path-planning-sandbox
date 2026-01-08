@@ -17,7 +17,7 @@ class Node:
     def __repr__(self):
         return f"Node({self.x}, {self.y})"
 
-def get_neighbors(node: Node, obstacles: set[Node]) -> list[Node]:
+def get_neighbors(node: Node, obstacles: set[Node] = set()) -> list[Node]:
     candidates = [Node(node.x + 1, node.y), Node(node.x - 1, node.y),
             Node(node.x, node.y + 1), Node(node.x, node.y - 1)]
     return [c for c in candidates if c not in obstacles]
@@ -28,18 +28,18 @@ def heuristic(node: Node) -> float:
 def cost_function(node: Node, alpha: float) -> float:
     return 1
 
-def draw_grid(start: Node, goal: Node, path: list[Node], explored: set[Node]) -> None:
-    # Find the boundaries of the grid
-    min_x = min([node.x for node in explored] + [start.x, goal.x])
-    max_x = max([node.x for node in explored] + [start.x, goal.x])
-    min_y = min([node.y for node in explored] + [start.y, goal.y])
-    max_y = max([node.y for node in explored] + [start.y, goal.y])
+def draw_grid(start: Node, goal: Node, path: list[Node], explored: set[Node], obstacles: set[Node], padding: int = 5) -> None:
+    # Find the boundaries of the grid based only on start and goal
+    min_x = min(start.x, goal.x)
+    max_x = max(start.x, goal.x)
+    min_y = min(start.y, goal.y)
+    max_y = max(start.y, goal.y)
     
-    # Add some padding
-    min_x -= 1
-    max_x += 1
-    min_y -= 1
-    max_y += 1
+    # Add padding
+    min_x -= padding
+    max_x += padding
+    min_y -= padding
+    max_y += padding
     
     # Draw the grid
     for y in range(max_y, min_y - 1, -1):
@@ -52,13 +52,15 @@ def draw_grid(start: Node, goal: Node, path: list[Node], explored: set[Node]) ->
                 row += "G "
             elif node in path:
                 row += "P "
+            elif node in obstacles:
+                row += "# "
             elif node in explored:
                 row += "* "
             else:
                 row += ". "
         print(row)
 
-def a_star_search(start: Node, goal: Node, alpha: float) -> None | tuple[dict[Node, Node], set[Node]]:
+def a_star_search(start: Node, goal: Node, obstacles: set[Node], alpha: float) -> None | tuple[dict[Node, Node], set[Node]]:
     frontier: deque = deque()
     explored: set[Node] = set()
     frontier.append(start)
@@ -68,7 +70,7 @@ def a_star_search(start: Node, goal: Node, alpha: float) -> None | tuple[dict[No
 
     while len(frontier) > 0:
         current = frontier.popleft()
-        for neighbor in get_neighbors(current):
+        for neighbor in get_neighbors(current, obstacles):
             if neighbor == goal:
                 came_from[neighbor] = current
                 return came_from, explored
@@ -77,6 +79,14 @@ def a_star_search(start: Node, goal: Node, alpha: float) -> None | tuple[dict[No
                 frontier.append(neighbor)
                 came_from[neighbor] = current
     return None
+
+def load_obstacles(file_path: str) -> set[Node]:
+    obstacles: set[Node] = set()
+    with open(file_path, 'r') as f:
+        for line in f:
+            x_str, y_str = line.strip().split(' ')
+            obstacles.add(Node(int(x_str), int(y_str)))
+    return obstacles
 
 def reconstruct_path(came_from: dict[Node, Node], start: Node, goal: Node) -> list[Node]:
     current: Node = goal
@@ -93,18 +103,24 @@ def main():
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument("end_x", type=int, help="X coordinate of the end node")
     parser.add_argument("end_y", type=int, help="Y coordinate of the end node")
-    parser.add_argument("--alpha", type=float, default=1.0, help="Alpha parameter for cost function")
+    parser.add_argument("-a", "--alpha", type=float, default=1.0, help="Alpha parameter for cost function")
+    parser.add_argument("-o", "--obstacles_file", type=str, default=None, help="Path to obstacles file")
 
     args = parser.parse_args()
 
+    if args.obstacles_file:
+        obstacles = load_obstacles(args.obstacles_file)
+    else:
+        obstacles = set()
+
     start = Node()
     goal = Node(args.end_x, args.end_y)
-    result = a_star_search(start, goal, args.alpha)
+    result = a_star_search(start, goal, obstacles, args.alpha)
 
     if result is not None:
         came_from, explored = result
         path = reconstruct_path(came_from, start, goal)
-        draw_grid(start, goal, path, explored)
+        draw_grid(start, goal, path, explored, obstacles)
     else:
         print("No path found")
 
