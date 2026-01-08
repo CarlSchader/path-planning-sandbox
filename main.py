@@ -28,12 +28,13 @@ def heuristic(node: Node) -> float:
 def cost_function(node: Node, alpha: float) -> float:
     return 1
 
-def draw_grid(start: Node, goal: Node, path: list[Node], explored: set[Node], obstacles: set[Node], padding: int = 5) -> None:
-    # Find the boundaries of the grid based only on start and goal
-    min_x = min(start.x, goal.x)
-    max_x = max(start.x, goal.x)
-    min_y = min(start.y, goal.y)
-    max_y = max(start.y, goal.y)
+def draw_grid(start: Node, goal: Node, path: list[Node], explored: set[Node], obstacles: set[Node], padding: int = 5) -> str:
+    # Find the boundaries of the grid based on start, goal, and path
+    all_points = [start, goal] + path
+    min_x = min(node.x for node in all_points)
+    max_x = max(node.x for node in all_points)
+    min_y = min(node.y for node in all_points)
+    max_y = max(node.y for node in all_points)
     
     # Add padding
     min_x -= padding
@@ -42,6 +43,7 @@ def draw_grid(start: Node, goal: Node, path: list[Node], explored: set[Node], ob
     max_y += padding
     
     # Draw the grid
+    grid_str = ""
     for y in range(max_y, min_y - 1, -1):
         row = ""
         for x in range(min_x, max_x + 1):
@@ -55,10 +57,11 @@ def draw_grid(start: Node, goal: Node, path: list[Node], explored: set[Node], ob
             elif node in obstacles:
                 row += "# "
             elif node in explored:
-                row += "* "
+                row += "_ "
             else:
-                row += ". "
-        print(row)
+                row += "  "
+        grid_str += row + "\n"
+    return grid_str
 
 def a_star_search(start: Node, goal: Node, obstacles: set[Node], alpha: float) -> None | tuple[dict[Node, Node], set[Node]]:
     frontier: deque = deque()
@@ -120,7 +123,7 @@ def main():
     if result is not None:
         came_from, explored = result
         path = reconstruct_path(came_from, start, goal)
-        draw_grid(start, goal, path, explored, obstacles)
+        print(draw_grid(start, goal, path, explored, obstacles))
     else:
         print("No path found")
 
