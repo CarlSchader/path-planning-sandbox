@@ -17,4 +17,3 @@ class Node:
 
     def __lt__(self, other):
         return (self.x, self.y) < (other.x, other.y)
-
