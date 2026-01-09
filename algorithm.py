@@ -4,6 +4,7 @@ import heapq
 from node import Node
 from metrics import euclidean
 
+
 def successors(node: Node, obstacles: set[Node] = set()) -> list[Node]:
     candidates = [
         Node(node.x + 1, node.y),
@@ -63,9 +64,10 @@ class AStarPlanner:
                     return came_from, explored
                 if neighbor not in explored:
                     explored.add(neighbor)
-                    heapq.heappush(frontier, (self._f(neighbor), neighbor)) 
+                    heapq.heappush(frontier, (self._f(neighbor), neighbor))
                     came_from[neighbor] = current
         return None
+
 
 ### D* Search Algorithm Implementation ###
 class DStarKey:
@@ -81,6 +83,7 @@ class DStarKey:
     def __le__(self, other: "DStarKey") -> bool:
         return self.k1 < other.k1 or (self.k1 == other.k1 and self.k2 <= other.k2)
 
+
 class DstarNode:
     def __init__(self, key, vertex):
         self.key = key
@@ -92,107 +95,121 @@ class DstarNode:
     def __lt__(self, other):
         return self.key < other.key
 
+
 class DStarQueue:
     def __init__(self):
-        self.heap = []
-        self.vertices_in_heap = []
+        self.heap: list[DstarNode] = []
+        self.vertices_in_heap: set[Node] = set()  # O(1) membership testing
+        self.vertex_to_index: dict[Node, int] = {}  # O(1) index lookup
 
     def top(self):
         return self.heap[0].vertex
 
     def top_key(self):
-        if len(self.heap) == 0: return DStarKey(float('inf'), float('inf'))
+        if len(self.heap) == 0:
+            return DStarKey(float("inf"), float("inf"))
         return self.heap[0].key
 
     def pop(self):
-        """!!!THIS CODE WAS COPIED AND MODIFIED!!! Source: Lib/heapq.py"""
         """Pop the smallest item off the heap, maintaining the heap invariant."""
-        lastelt = self.heap.pop()  # raises appropriate IndexError if heap is empty
-        self.vertices_in_heap.remove(lastelt)
-        if self.heap:
-            returnitem = self.heap[0]
+        if not self.heap:
+            raise IndexError("pop from empty heap")
+
+        returnitem = self.heap[0]
+        self.vertices_in_heap.remove(returnitem.vertex)
+        del self.vertex_to_index[returnitem.vertex]
+
+        if len(self.heap) > 1:
+            # Move last element to root and sift down
+            lastelt = self.heap.pop()
             self.heap[0] = lastelt
+            self.vertex_to_index[lastelt.vertex] = 0
             self._siftup(0)
         else:
-            returnitem = lastelt
+            self.heap.pop()
+
         return returnitem
 
     def insert(self, vertex, key):
         item = DstarNode(key, vertex)
-        self.vertices_in_heap.append(vertex)
-        """!!!THIS CODE WAS COPIED AND MODIFIED!!! Source: Lib/heapq.py"""
-        """Push item onto heap, maintaining the heap invariant."""
+        self.vertices_in_heap.add(vertex)
+        pos = len(self.heap)
         self.heap.append(item)
-        self._siftdown(0, len(self.heap) - 1)
+        self.vertex_to_index[vertex] = pos
+        self._siftdown(0, pos)
 
     def contains(self, vertex):
         return vertex in self.vertices_in_heap
 
     def remove(self, vertex):
+        if vertex not in self.vertex_to_index:
+            return
+
         self.vertices_in_heap.remove(vertex)
-        for index, dstar_node in enumerate(self.heap):
-            if dstar_node.vertex == vertex:
-                self.heap[index] = self.heap[len(self.heap) - 1]
-                self.heap.remove(self.heap[len(self.heap) - 1])
-                break
-        self.build_heap()
+        index = self.vertex_to_index[vertex]
+        del self.vertex_to_index[vertex]
+
+        if index == len(self.heap) - 1:
+            # Removing last element, just pop
+            self.heap.pop()
+        else:
+            # Replace with last element and restore heap property
+            lastelt = self.heap.pop()
+            self.heap[index] = lastelt
+            self.vertex_to_index[lastelt.vertex] = index
+            # Restore heap property - could need to go up or down
+            self._siftdown(0, index)
+            self._siftup(index)
 
     def update(self, vertex, key):
-        for index, dstar_node in enumerate(self.heap):
-            if dstar_node.vertex == vertex:
-                self.heap[index].key = key
-                break
-        self.build_heap()
+        if vertex not in self.vertex_to_index:
+            return
 
-    # !!!THIS FUNCTION WAS COPIED AND MODIFIED!!! Source: Lib/heapq.py
-    def build_heap(self):
-        """Transform list into a heap, in-place, in O(len(x)) time."""
-        n = len(self.heap)
-        # Transform bottom-up.  The largest index there's any point to looking at
-        # is the largest with a child index in-range, so must have 2*i + 1 < n,
-        # or i < (n-1)/2.  If n is even = 2*j, this is (2*j-1)/2 = j-1/2 so
-        # j-1 is the largest, which is n//2 - 1.  If n is odd = 2*j+1, this is
-        # (2*j+1-1)/2 = j so j-1 is the largest, and that's again n//2-1.
-        for i in reversed(range(n // 2)):
-            self._siftup(i)
+        index = self.vertex_to_index[vertex]
+        old_key = self.heap[index].key
+        self.heap[index].key = key
 
-    # !!!THIS FUNCTION WAS COPIED AND MODIFIED!!! Source: Lib/heapq.py
-    # 'heap' is a heap at all indices >= startpos, except possibly for pos.  pos
-    # is the index of a leaf with a possibly out-of-order value.  Restore the
-    # heap invariant.
+        # Restore heap property based on whether key increased or decreased
+        if key < old_key:
+            self._siftdown(0, index)
+        else:
+            self._siftup(index)
+
     def _siftdown(self, startpos, pos):
+        """Bubble up toward root - used when key decreases."""
         newitem = self.heap[pos]
-        # Follow the path to the root, moving parents down until finding a place
-        # newitem fits.
         while pos > startpos:
             parentpos = (pos - 1) >> 1
             parent = self.heap[parentpos]
             if newitem < parent:
                 self.heap[pos] = parent
+                self.vertex_to_index[parent.vertex] = pos
                 pos = parentpos
                 continue
             break
         self.heap[pos] = newitem
+        self.vertex_to_index[newitem.vertex] = pos
 
     def _siftup(self, pos):
+        """Bubble down toward leaves - used when key increases."""
         endpos = len(self.heap)
-        startpos = pos
         newitem = self.heap[pos]
-        # Bubble up the smaller child until hitting a leaf.
-        childpos = 2 * pos + 1  # leftmost child position
+        childpos = 2 * pos + 1
         while childpos < endpos:
-            # Set childpos to index of smaller child.
             rightpos = childpos + 1
             if rightpos < endpos and not self.heap[childpos] < self.heap[rightpos]:
                 childpos = rightpos
-            # Move the smaller child up.
+            # Move smaller child up
             self.heap[pos] = self.heap[childpos]
+            self.vertex_to_index[self.heap[pos].vertex] = pos
             pos = childpos
             childpos = 2 * pos + 1
-        # The leaf at pos is empty now.  Put newitem there, and bubble it up
-        # to its final resting place (by sifting its parents down).
+        # Put newitem in its final position
         self.heap[pos] = newitem
-        self._siftdown(startpos, pos)
+        self.vertex_to_index[newitem.vertex] = pos
+        # May need to bubble up if we're not at a good spot
+        self._siftdown(0, pos)
+
 
 class DStarPlanner:
     start: Node
@@ -225,15 +242,15 @@ class DStarPlanner:
         self.U.insert(self.goal, DStarKey(heuristic(self.start, self.goal), 0.0))
 
     def g(self, node: Node) -> float:
-        return self.g_map.get(node, float('inf'))
+        return self.g_map.get(node, float("inf"))
 
     def rhs(self, node: Node) -> float:
-        return self.rhs_map.get(node, float('inf'))
+        return self.rhs_map.get(node, float("inf"))
 
     def calculate_key(self, node: Node) -> DStarKey:
         return DStarKey(
-            min(self.g(node), self.rhs(node)) + self.h(self.start, node) + self.k_m, 
-            min(self.g(node), self.rhs(node))
+            min(self.g(node), self.rhs(node)) + self.h(self.start, node) + self.k_m,
+            min(self.g(node), self.rhs(node)),
         )
 
     def update_vertex(self, u: Node) -> None:
@@ -253,17 +270,19 @@ class DStarPlanner:
                 successors(current, self.obstacles),
                 key=lambda n: cost(current, n) + self.g(n),
             )
-            if next_node is None or self.g(next_node) == float('inf'):
+            if next_node is None or self.g(next_node) == float("inf"):
                 return []  # No path found
             current = next_node
         path.append(self.goal)
         return path
 
     def execute(self, cost: Callable[[Node, Node], float]) -> set[Node]:
-        explored: set[Node] = set() # extra
-        while self.U.top_key() < self.calculate_key(self.start) or self.rhs(self.start) != self.g(self.start):
+        explored: set[Node] = set()  # extra
+        while self.U.top_key() < self.calculate_key(self.start) or self.rhs(
+            self.start
+        ) != self.g(self.start):
             u = self.U.top()
-            explored.add(u) # extra
+            explored.add(u)  # extra
             k_old = self.U.top_key()
             k_new = self.calculate_key(u)
             if k_old < k_new:
@@ -277,13 +296,18 @@ class DStarPlanner:
                         self.update_vertex(s)
             else:
                 g_old = self.g(u)
-                self.g_map[u] = float('inf')
+                self.g_map[u] = float("inf")
                 for s in successors(u, self.obstacles) + [u]:
                     if self.rhs(s) == cost(s, u) + g_old:
                         if s != self.goal:
-                            self.rhs_map[s] = min([cost(s, s_prime) + self.g(s_prime) for s_prime in successors(s, self.obstacles)])
+                            self.rhs_map[s] = min(
+                                [
+                                    cost(s, s_prime) + self.g(s_prime)
+                                    for s_prime in successors(s, self.obstacles)
+                                ]
+                            )
                     self.update_vertex(s)
-        return explored # extra
+        return explored  # extra
 
     def update_on_new_cost(
         self,
@@ -293,13 +317,18 @@ class DStarPlanner:
     ) -> None:
         self.k_m += self.h(self.s_last, self.start)
         self.s_last = self.start
-        for (u, v) in changed_edges:
+        for u, v in changed_edges:
             c_old = old_cost(u, v)
-            c_new = new_cost(u, v) 
+            c_new = new_cost(u, v)
             if c_old > c_new:
                 if u != self.goal:
                     self.rhs_map[u] = min(self.rhs(u), c_new + self.g(v))
             elif self.rhs(u) == c_old + self.g(v):
                 if u != self.goal:
-                    self.rhs_map[u] = min([new_cost(u, s) + self.g(s) for s in successors(u, self.obstacles)])
+                    self.rhs_map[u] = min(
+                        [
+                            new_cost(u, s) + self.g(s)
+                            for s in successors(u, self.obstacles)
+                        ]
+                    )
             self.update_vertex(u)
