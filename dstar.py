@@ -43,7 +43,9 @@ def traverse(
     goal: Node,
     obstacles: set[Node],
     metric: Callable[[Node, Node], float] = euclidean,
+    timing: bool = False
 ) -> None:
+    start_time = time.time()
     s_last = start
     heuristic = metric
     iteration = 1
@@ -58,8 +60,9 @@ def traverse(
         # start = min(successors(start, obstacles), key=lambda n: cost(start, n) + planner.g(n))
         path = planner.get_path(cost)
 
-        render_grid(start, goal, path, explored, obstacles)
-        time.sleep(0.25)
+        if not timing:
+            render_grid(start, goal, path, explored, obstacles)
+            time.sleep(0.25)
 
         start = path[1]
 
@@ -67,11 +70,13 @@ def traverse(
         if iteration % COST_UPDATE_INTERVAL == 0:
             old_cost = cost
             cost, changed_edges = update_cost(metric, obstacles, iteration)
-            print(f"Updating costs at iteration {iteration}")
 
         planner.start = start
         explored = planner.execute(cost)
         iteration += 1
+    elapsed_time = time.time() - start_time
+    if timing:
+        print(f"Total time taken: {elapsed_time:.4f} seconds")
 
 def main():
     import argparse
@@ -80,6 +85,7 @@ def main():
     parser.add_argument("end_y", type=int, help="Y coordinate of the end node")
     parser.add_argument("-o", "--obstacles_file", type=str, default=None, help="Path to obstacles file")
     parser.add_argument("-m", "--metric", type=str, choices=[m.value for m in Metric], default=Metric.EUCLIDEAN.value, help="Cost metric to use")
+    parser.add_argument("-t", "--timing", action="store_true", help="Enable timing output")
 
     args = parser.parse_args()
 
@@ -91,7 +97,7 @@ def main():
     start = Node()
     goal = Node(args.end_x, args.end_y)
     metric = Metric(args.metric).to_function()
-    traverse(start, goal, obstacles, metric)
+    traverse(start, goal, obstacles, metric, timing=args.timing)
 
 if __name__ == "__main__":
     main()

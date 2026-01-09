@@ -13,7 +13,9 @@ def traverse(
     goal: Node,
     obstacles: set[Node],
     metric: Callable[[Node, Node], float] = euclidean,
+    timing: bool = False
 ) -> None:
+    start_time = time.time()
     while start != goal:
         planner = AStarPlanner(start, goal, obstacles, metric)
         result = planner.execute()
@@ -22,11 +24,15 @@ def traverse(
         came_from, explored = result
         path = reconstruct_path(came_from, start, goal)
 
-        render_grid(start, goal, path, explored, obstacles)
-        time.sleep(0.25)
+        if not timing:
+            render_grid(start, goal, path, explored, obstacles)
+            time.sleep(0.25)
 
         start = path[1]
-    return
+
+    elapsed_time = time.time() - start_time
+    if timing:
+        print(f"Total time taken: {elapsed_time:.4f} seconds")
 
 def main():
     import argparse
@@ -35,6 +41,7 @@ def main():
     parser.add_argument("end_y", type=int, help="Y coordinate of the end node")
     parser.add_argument("-o", "--obstacles_file", type=str, default=None, help="Path to obstacles file")
     parser.add_argument("-m", "--metric", type=str, choices=[m.value for m in Metric], default=Metric.EUCLIDEAN.value, help="Cost metric to use")
+    parser.add_argument("-t", "--timing", action="store_true", help="Enable timing output")
 
     args = parser.parse_args()
 
@@ -46,7 +53,7 @@ def main():
     start = Node()
     goal = Node(args.end_x, args.end_y)
     metric = Metric(args.metric).to_function()
-    traverse(start, goal, obstacles, metric)
+    traverse(start, goal, obstacles, metric, timing=args.timing)
 
 if __name__ == "__main__":
     main()
