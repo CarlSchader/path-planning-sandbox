@@ -52,27 +52,28 @@ def traverse(
     cost, _ = update_cost(metric, obstacles, iteration)
     planner = DStarPlanner(start, goal, heuristic, obstacles)
     explored = planner.execute(cost)
+    path = planner.get_path(cost)
     while start != goal:
         if planner.g(start) == float('inf'):
             print("No path found!")
             return
-
-        # start = min(successors(start, obstacles), key=lambda n: cost(start, n) + planner.g(n))
-        path = planner.get_path(cost)
 
         if not timing:
             render_grid(start, goal, path, explored, obstacles)
             time.sleep(0.25)
 
         start = path[1]
+        path = path[1:]
+        planner.start = start
 
         # scan for changes in edge cost
         if iteration % COST_UPDATE_INTERVAL == 0:
             old_cost = cost
             cost, changed_edges = update_cost(metric, obstacles, iteration)
+            planner.update_on_new_cost(old_cost, cost, changed_edges)
+            explored = planner.execute(cost)
+            path = planner.get_path(cost)
 
-        planner.start = start
-        explored = planner.execute(cost)
         iteration += 1
     elapsed_time = time.time() - start_time
     if timing:
