@@ -70,18 +70,23 @@ class AStarPlanner:
 
 
 ### D* Search Algorithm Implementation ###
+EPSILON = 1e-9  # Tolerance for floating point comparison
+
+
 class DStarKey:
     def __init__(self, k1: float, k2: float):
         self.k1 = k1
         self.k2 = k2
 
     def __lt__(self, other: "DStarKey") -> bool:
-        if self.k1 == other.k1:
-            return self.k2 < other.k2
-        return self.k1 < other.k1
+        if abs(self.k1 - other.k1) < EPSILON:
+            return self.k2 < other.k2 - EPSILON
+        return self.k1 < other.k1 - EPSILON
 
     def __le__(self, other: "DStarKey") -> bool:
-        return self.k1 < other.k1 or (self.k1 == other.k1 and self.k2 <= other.k2)
+        if abs(self.k1 - other.k1) < EPSILON:
+            return self.k2 <= other.k2 + EPSILON
+        return self.k1 < other.k1 + EPSILON
 
 
 class DstarNode:
